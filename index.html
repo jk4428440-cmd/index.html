@@ -1,0 +1,40 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Screenshot Analyzer (Beta)</title>
+<style>
+body{font-family:system-ui,Arial,sans-serif;max-width:800px;margin:24px auto;padding:0 12px;line-height:1.5}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+h1{font-size:20px;margin:0}.card{border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin:12px 0}
+button{background:#111827;color:#fff;border:0;border-radius:8px;padding:10px 14px}button:disabled{opacity:.6}
+#preview{max-width:100%;border:1px dashed #cbd5e1;border-radius:8px;margin-top:10px}
+#out{white-space:pre-wrap;background:#0b1020;color:#e7e9f7;padding:12px;border-radius:8px;min-height:80px}
+label{display:block;margin:8px 0 4px}input[type=file]{padding:8px;border:1px solid #e5e7eb;border-radius:8px;width:100%}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row>*{flex:1}
+</style></head><body>
+<header><h1>Screenshot Analyzer (Beta)</h1><span id="status">Idle</span></header>
+<div class="card">
+  <label for="file">Upload screenshot (PNG/JPG)</label>
+  <input id="file" type="file" accept="image/*" />
+  <img id="preview" alt="">
+  <div class="row" style="margin-top:10px">
+    <input id="prompt" type="text" placeholder="Prompt (optional), e.g. 'Find UX issues and fixes'">
+    <button id="analyze" disabled>Analyze</button>
+  </div>
+</div>
+<div class="card"><strong>Result</strong><pre id="out">Upload an image, then tap Analyze.</pre></div>
+<script>
+const fileEl=document.getElementById('file'),btn=document.getElementById('analyze'),out=document.getElementById('out'),
+statusEl=document.getElementById('status'),preview=document.getElementById('preview'),promptEl=document.getElementById('prompt');
+let imageB64=null;
+fileEl.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f){btn.disabled=true;imageB64=null;preview.src='';return;}
+const url=URL.createObjectURL(f);preview.src=url;const arr=await f.arrayBuffer();const bytes=new Uint8Array(arr);
+let bin='';for(let i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);imageB64=btoa(bin);btn.disabled=false;out.textContent='Ready to analyze.';});
+btn.addEventListener('click',async()=>{if(!imageB64){out.textContent='Please upload an image first.';return;}
+statusEl.textContent='Analyzing...';btn.disabled=true;out.textContent='Working...';
+const PROXY_URL='https://YOUR-PROJECT.vercel.app/api/analyze'; // replace after deploy
+try{const res=await fetch(PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+body:JSON.stringify({image_base64:imageB64,prompt:promptEl.value||'Identify key UI elements, readability issues, and give 5 actionable fixes.'})});
+if(!res.ok)throw new Error('Proxy error: '+res.status);const data=await res.json();out.textContent=data.result||JSON.stringify(data,null,2);}
+catch(err){out.textContent='Error: '+err.message+'
+Set PROXY_URL after deploying the proxy.';}
+finally{statusEl.textContent='Idle';btn.disabled=false;}});</script></body></html>
